@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ThriftTrack">
+<meta name="theme-color" content="#0F6E56">
+<title>ThriftTrack</title>
+
+<!-- PWA Icons (inline SVG as data URIs for self-contained file) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230F6E56'/%3E%3Ctext x='90' y='120' font-size='90' text-anchor='middle' font-family='Georgia,serif' fill='white'%3E✦%3C/text%3E%3C/svg%3E">
+
+<style>
+  :root {
+    --green: #0F6E56;
+    --green-light: #E1F5EE;
+    --green-mid: #1D9E75;
+    --green-dark: #085041;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --red: #A32D2D;
+    --red-light: #FCEBEB;
+    --blue-light: #E6F1FB;
+    --blue: #185FA5;
+    --text: #1a1a1a;
+    --text-muted: #6b7280;
+    --text-hint: #9ca3af;
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: rgba(0,0,0,0.10);
+    --border-mid: rgba(0,0,0,0.18);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  html, body {
+    height: 100%; width: 100%; overflow: hidden;
+    font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .app {
+    display: flex; flex-direction: column;
+    height: 100vh; width: 100%;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
+    overflow: hidden;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    background: var(--green);
+    padding: 14px 18px 12px;
+    flex-shrink: 0;
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .logo { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: white; letter-spacing: -0.3px; }
+  .logo-dot { color: #9FE1CB; }
+  .header-date { font-size: 12px; color: rgba(255,255,255,0.65); }
+  .stats-row { display: flex; gap: 0; }
+  .stat-pill {
+    flex: 1; background: rgba(255,255,255,0.12); border-radius: 8px;
+    padding: 7px 10px; margin-right: 8px; text-align: center;
+  }
+  .stat-pill:last-child { margin-right: 0; }
+  .stat-val { font-size: 16px; font-weight: 600; color: white; line-height: 1; }
+  .stat-lbl { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* ─── Tab Bar ─── */
+  .tabbar {
+    display: flex; background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1; padding: 11px 8px 10px; text-align: center;
+    font-size: 13px; color: var(--text-muted); cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s;
+    font-weight: 500;
+    -webkit-user-select: none;
+  }
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* ─── Scrollable Content ─── */
+  .page { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px; display: none; }
+  .page.active { display: block; }
+
+  /* ─── Scan Page ─── */
+  .scan-card {
+    background: var(--surface); border-radius: 16px;
+    border: 0.5px solid var(--border); overflow: hidden;
+    margin-bottom: 12px;
+  }
+  .scan-card-inner { padding: 20px; }
+
+  .drop-zone {
+    border: 2px dashed #9FE1CB; border-radius: 12px;
+    padding: 32px 20px; text-align: center; cursor: pointer;
+    background: #fafffe; margin-bottom: 14px;
+    transition: background 0.15s;
+    -webkit-user-select: none;
+  }
+  .drop-zone:active { background: var(--green-light); }
+  .drop-icon {
+    width: 56px; height: 56px; background: var(--green-light);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; margin: 0 auto 12px;
+  }
+  .drop-icon svg { width: 26px; height: 26px; stroke: var(--green); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .drop-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .drop-sub { font-size: 13px; color: var(--text-muted); }
+
+  .btn-primary {
+    width: 100%; padding: 14px; background: var(--green);
+    color: white; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    font-family: inherit; letter-spacing: -0.2px;
+  }
+  .btn-primary:active { background: var(--green-dark); transform: scale(0.98); }
+  .btn-secondary {
+    width: 100%; padding: 12px; background: none;
+    color: var(--text-muted); border: 0.5px solid var(--border-mid);
+    border-radius: 12px; font-size: 14px; cursor: pointer;
+    font-family: inherit; margin-top: 8px;
+  }
+  .btn-secondary:active { background: var(--bg); }
+
+  input[type="file"] { display: none; }
+
+  .preview-img {
+    width: 100%; max-height: 220px; object-fit: cover;
+    border-radius: 12px; margin-bottom: 14px; display: block;
+  }
+
+  /* Thinking animation */
+  .thinking-wrap { text-align: center; padding: 24px 0; }
+  .thinking-img { width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 16px; }
+  .thinking-label { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; }
+  .dots { display: flex; justify-content: center; gap: 6px; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green); animation: pulse 1.2s ease-in-out infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  /* AI badge */
+  .ai-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; background: var(--green-light); color: var(--green-dark);
+    padding: 4px 10px; border-radius: 20px; font-weight: 600;
+    margin-bottom: 14px; letter-spacing: 0.2px;
+  }
+
+  /* Form fields */
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg); border: 0.5px solid var(--border-mid);
+    border-radius: 10px; padding: 10px 12px; font-size: 15px;
+    color: var(--text); font-family: inherit; outline: none;
+    -webkit-appearance: none; appearance: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--green); background: white;
+  }
+  .field textarea { resize: none; height: 72px; line-height: 1.5; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ─── Inventory Page ─── */
+  .search-wrap { margin-bottom: 12px; display: flex; gap: 8px; }
+  .search-input {
+    flex: 1; background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-size: 15px;
+    color: var(--text); font-family: inherit; outline: none;
+    -webkit-appearance: none;
+  }
+  .filter-select {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 10px 10px; font-size: 13px;
+    color: var(--text); font-family: inherit; outline: none;
+    -webkit-appearance: none;
+  }
+
+  .item-card {
+    background: var(--surface); border-radius: 14px;
+    border: 0.5px solid var(--border); margin-bottom: 10px;
+    overflow: hidden; display: flex;
+  }
+  .item-thumb {
+    width: 88px; min-height: 88px; object-fit: cover; flex-shrink: 0;
+  }
+  .item-thumb-ph {
+    width: 88px; min-height: 88px; background: var(--green-light);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .item-thumb-ph svg { width: 28px; height: 28px; stroke: var(--green); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .item-body { padding: 10px 12px; flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
+  .item-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; }
+  .tag-cat { background: var(--green-light); color: var(--green-dark); }
+  .tag-cond { background: var(--blue-light); color: var(--blue); }
+  .tag-sold { background: var(--red-light); color: var(--red); }
+  .tag-listed { background: var(--amber-light); color: var(--amber); }
+  .tag-unlisted { background: #f3f4f6; color: #6b7280; }
+  .item-footer { display: flex; align-items: center; justify-content: space-between; }
+  .item-price { font-size: 15px; font-weight: 700; color: var(--green); }
+  .item-profit { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+  .profit-pos { background: #EAF3DE; color: #27500A; }
+  .profit-neg { background: var(--red-light); color: var(--red); }
+  .item-btns { display: flex; gap: 5px; }
+  .btn-sm {
+    padding: 5px 9px; font-size: 11px; font-weight: 600;
+    border-radius: 8px; border: 0.5px solid var(--border-mid);
+    background: transparent; color: var(--text-muted); cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-sm:active { background: var(--bg); transform: scale(0.96); }
+  .btn-sm.green { border-color: #9FE1CB; color: var(--green); }
+  .btn-sm.amber { border-color: #FAC775; color: var(--amber); }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; }
+
+  /* ─── Bottom Sheet Modal ─── */
+  .sheet-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 200; align-items: flex-end; justify-content: center;
+  }
+  .sheet-overlay.open { display: flex; }
+  .sheet {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 20px 18px calc(20px + var(--safe-bottom));
+    width: 100%; max-height: 88vh; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sheet-handle { width: 36px; height: 4px; background: var(--border-mid); border-radius: 2px; margin: 0 auto 16px; }
+  .sheet-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+  .sheet-close { float: right; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); margin-top: -4px; line-height: 1; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: calc(80px + var(--safe-bottom)); left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a1a1a; color: white; padding: 10px 18px;
+    border-radius: 20px; font-size: 14px; font-weight: 500;
+    opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; z-index: 300;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">thrift<span class="logo-dot">✦</span>track</div>
+      <div class="header-date" id="hdr-date"></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="stat-val" id="s-items">0</div>
+        <div class="stat-lbl">Items</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-val" id="s-value">$0</div>
+        <div class="stat-lbl">Listed</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-val" id="s-profit">$0</div>
+        <div class="stat-lbl">Profit</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tabbar">
+    <div class="tab active" id="tab-scan-btn" onclick="switchTab('scan')">📷 Scan Item</div>
+    <div class="tab" id="tab-inv-btn" onclick="switchTab('inventory')">📦 Inventory</div>
+    <div class="tab" id="tab-add-btn" onclick="switchTab('add')">＋ Manual Add</div>
+  </div>
+
+  <!-- Scan Page -->
+  <div class="page active" id="page-scan">
+    <div class="scan-card">
+      <div class="scan-card-inner">
+
+        <!-- Step 1: Upload -->
+        <div id="step-upload">
+          <div class="drop-zone" onclick="document.getElementById('photo-input').click()">
+            <div class="drop-icon">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div class="drop-title">Take or upload a photo</div>
+            <div class="drop-sub">AI will identify & fill in the details</div>
+          </div>
+          <input type="file" id="photo-input" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+          <button class="btn-primary" onclick="document.getElementById('photo-input').click()">Open Camera</button>
+        </div>
+
+        <!-- Step 2: Thinking -->
+        <div id="step-thinking" style="display:none;">
+          <div class="thinking-wrap">
+            <img id="thinking-img" class="thinking-img" src="" alt="">
+            <div class="thinking-label">AI is analyzing your item…</div>
+            <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+          </div>
+        </div>
+
+        <!-- Step 3: Result form -->
+        <div id="step-result" style="display:none;">
+          <img id="result-img" class="preview-img" src="" alt="">
+          <div class="ai-badge">✦ AI suggested — edit anything</div>
+          <div class="field"><label>Item Name</label><input id="f-name" type="text" placeholder="e.g. Vintage Levi's Jacket"></div>
+          <div class="field-row">
+            <div class="field"><label>Category</label><select id="f-cat"><option>Clothing</option><option>Shoes</option><option>Accessories</option><option>Handbags</option><option>Home Decor</option><option>Books</option><option>Electronics</option><option>Toys & Games</option><option>Jewelry</option><option>Art</option><option>Other</option></select></div>
+            <div class="field"><label>Condition</label><select id="f-cond"><option>Like New</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Cost Paid ($)</label><input id="f-cost" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+            <div class="field"><label>List Price ($)</label><input id="f-price" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+          </div>
+          <div class="field"><label>Platform</label><select id="f-platform"><option>eBay</option><option>Depop</option><option>Poshmark</option><option>Mercari</option><option>Facebook Marketplace</option><option>Vinted</option><option>ThredUp</option><option>In Person</option></select></div>
+          <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Brand, size, color, condition details…"></textarea></div>
+          <button class="btn-primary" onclick="addItemFromScan()">Add to Inventory</button>
+          <button class="btn-secondary" onclick="resetScan()">Scan Another Item</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Inventory Page -->
+  <div class="page" id="page-inventory">
+    <div class="search-wrap">
+      <input class="search-input" type="text" id="search-q" placeholder="Search items…" oninput="renderInventory()">
+      <select class="filter-select" id="filter-s" onchange="renderInventory()">
+        <option value="">All</option>
+        <option value="unlisted">Unlisted</option>
+        <option value="listed">Listed</option>
+        <option value="sold">Sold</option>
+      </select>
+    </div>
+    <div id="inv-list"></div>
+  </div>
+
+  <!-- Manual Add Page -->
+  <div class="page" id="page-add">
+    <div class="scan-card">
+      <div class="scan-card-inner">
+        <div class="field"><label>Item Name</label><input id="m-name" type="text" placeholder="What is it?"></div>
+        <div class="field-row">
+          <div class="field"><label>Category</label><select id="m-cat"><option>Clothing</option><option>Shoes</option><option>Accessories</option><option>Handbags</option><option>Home Decor</option><option>Books</option><option>Electronics</option><option>Toys & Games</option><option>Jewelry</option><option>Art</option><option>Other</option></select></div>
+          <div class="field"><label>Condition</label><select id="m-cond"><option>Like New</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Cost Paid ($)</label><input id="m-cost" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+          <div class="field"><label>List Price ($)</label><input id="m-price" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+        </div>
+        <div class="field"><label>Platform</label><select id="m-platform"><option>eBay</option><option>Depop</option><option>Poshmark</option><option>Mercari</option><option>Facebook Marketplace</option><option>Vinted</option><option>ThredUp</option><option>In Person</option></select></div>
+        <div class="field"><label>Notes</label><textarea id="m-notes" placeholder="Any extra details…"></textarea></div>
+        <button class="btn-primary" onclick="addManual()">Add to Inventory</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Sheet -->
+<div class="sheet-overlay" id="edit-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <button class="sheet-close" onclick="closeSheet()">×</button>
+    <div class="sheet-title">Edit Item</div>
+    <div id="edit-fields"></div>
+    <button class="btn-primary" style="margin-top:14px;" onclick="saveEdit()">Save Changes</button>
+    <button class="btn-secondary" style="margin-top:8px;color:#A32D2D;border-color:#F7C1C1;" onclick="deleteItem()">Delete Item</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const DB = 'thrifttrack_v2';
+let inventory = [];
+let editingId = null;
+let scanPhoto = null;
+
+// ── Init ──
+function init() {
+  try { inventory = JSON.parse(localStorage.getItem(DB)) || []; } catch(e) { inventory = []; }
+  document.getElementById('hdr-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  updateStats();
+}
+
+function save() {
+  try { localStorage.setItem(DB, JSON.stringify(inventory)); } catch(e) {}
+}
+
+function updateStats() {
+  const active = inventory.filter(i => i.status !== 'sold');
+  const val = active.reduce((s,i)=>s+(parseFloat(i.price)||0),0);
+  const cost = inventory.reduce((s,i)=>s+(parseFloat(i.cost)||0),0);
+  const rev = inventory.filter(i=>i.status==='sold').reduce((s,i)=>s+(parseFloat(i.price)||0),0);
+  const profit = rev - cost;
+  document.getElementById('s-items').textContent = inventory.length;
+  document.getElementById('s-value').textContent = '$'+Math.round(val);
+  document.getElementById('s-profit').textContent = (profit>=0?'+':'')+' $'+Math.round(Math.abs(profit));
+}
+
+// ── Tabs ──
+function switchTab(t) {
+  ['scan','inventory','add'].forEach(id => {
+    document.getElementById('page-'+id).classList.toggle('active', id===t);
+  });
+  document.getElementById('tab-scan-btn').classList.toggle('active',t==='scan');
+  document.getElementById('tab-inv-btn').classList.toggle('active',t==='inventory');
+  document.getElementById('tab-add-btn').classList.toggle('active',t==='add');
+  if (t==='inventory') renderInventory();
+}
+
+// ── Scan ──
+async function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    scanPhoto = ev.target.result;
+    document.getElementById('thinking-img').src = scanPhoto;
+    document.getElementById('result-img').src = scanPhoto;
+    show('step-upload', false);
+    show('step-thinking', true);
+    show('step-result', false);
+    await analyzePhoto(scanPhoto);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzePhoto(dataUrl) {
+  const base64 = dataUrl.split(',')[1];
+  const mime = dataUrl.split(';')[0].split(':')[1];
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:600,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:mime,data:base64}},
+            {type:'text',text:'You help a thrift reseller catalog items for resale. Analyze this photo and reply ONLY with a valid JSON object (no markdown, no backticks, no explanation). Fields: name (string, specific descriptive item name), category (exactly one of: Clothing, Shoes, Accessories, Handbags, Home Decor, Books, Electronics, Toys & Games, Jewelry, Art, Other), condition (exactly one of: Like New, Excellent, Good, Fair, Poor), suggestedPrice (number, realistic USD resale value based on current market), notes (string, 1-2 sentences with brand if visible, material, color, size indicators, and anything a buyer would want to know). Be specific and helpful.'}
+          ]
+        }]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
+    const p = JSON.parse(raw);
+    setVal('f-name', p.name||'');
+    setSelect('f-cat', p.category);
+    setSelect('f-cond', p.condition);
+    setVal('f-price', p.suggestedPrice||'');
+    setVal('f-notes', p.notes||'');
+  } catch(err) {
+    setVal('f-name','');
+    setVal('f-notes','AI scan unavailable — fill in details manually.');
+  }
+  show('step-thinking',false);
+  show('step-result',true);
+}
+
+function addItemFromScan() {
+  const item = buildItem('f');
+  item.photo = scanPhoto;
+  inventory.unshift(item);
+  save(); updateStats(); resetScan();
+  toast('Item added!');
+  switchTab('inventory');
+}
+
+function addManual() {
+  const item = buildItem('m');
+  inventory.unshift(item);
+  save(); updateStats();
+  toast('Item added!');
+  clearForm('m');
+  switchTab('inventory');
+}
+
+function buildItem(prefix) {
+  return {
+    id: Date.now() + Math.random(),
+    name: document.getElementById(prefix+'-name').value || 'Unnamed Item',
+    category: document.getElementById(prefix+'-cat').value,
+    condition: document.getElementById(prefix+'-cond').value,
+    cost: document.getElementById(prefix+'-cost').value,
+    price: document.getElementById(prefix+'-price').value,
+    platform: document.getElementById(prefix+'-platform').value,
+    notes: document.getElementById(prefix+'-notes').value,
+    status: 'unlisted',
+    addedAt: new Date().toISOString(),
+    photo: null
+  };
+}
+
+function clearForm(prefix) {
+  ['name','cost','price','notes'].forEach(f => setVal(prefix+'-'+f,''));
+}
+
+function resetScan() {
+  scanPhoto = null;
+  document.getElementById('photo-input').value='';
+  ['f-name','f-cost','f-price','f-notes'].forEach(id=>setVal(id,''));
+  show('step-upload',true); show('step-thinking',false); show('step-result',false);
+}
+
+// ── Inventory ──
+function renderInventory() {
+  const q = (document.getElementById('search-q').value||'').toLowerCase();
+  const fs = document.getElementById('filter-s').value;
+  const filtered = inventory.filter(i=>{
+    const mq = !q || (i.name||'').toLowerCase().includes(q) || (i.category||'').toLowerCase().includes(q) || (i.notes||'').toLowerCase().includes(q);
+    const ms = !fs || i.status===fs;
+    return mq && ms;
+  });
+  const el = document.getElementById('inv-list');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🛍</div><div class="empty-text">${inventory.length?'No items match your filter':'No items yet — scan your first find!'}</div></div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(item => {
+    const profit = (parseFloat(item.price)||0) - (parseFloat(item.cost)||0);
+    const pCls = profit>=0?'profit-pos':'profit-neg';
+    const pTxt = (profit>=0?'+':'')+' $'+Math.abs(profit).toFixed(0);
+    const imgEl = item.photo
+      ? `<img class="item-thumb" src="${item.photo}" alt="">`
+      : `<div class="item-thumb-ph"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
+    const statusTag = item.status==='sold'
+      ? '<span class="tag tag-sold">Sold</span>'
+      : item.status==='listed'
+        ? '<span class="tag tag-listed">Listed</span>'
+        : '<span class="tag tag-unlisted">Unlisted</span>';
+    const actionBtns = item.status!=='sold'
+      ? `<button class="btn-sm green" onclick="markStatus(${JSON.stringify(item.id)},'sold')">Sold</button>
+         ${item.status==='unlisted'?`<button class="btn-sm amber" onclick="markStatus(${JSON.stringify(item.id)},'listed')">List</button>`:''}
+         <button class="btn-sm" onclick="openEdit(${JSON.stringify(item.id)})">Edit</button>`
+      : `<button class="btn-sm" onclick="openEdit(${JSON.stringify(item.id)})">Edit</button>`;
+    return `<div class="item-card">
+      ${imgEl}
+      <div class="item-body">
+        <div class="item-name">${escHtml(item.name)}</div>
+        <div class="item-tags">
+          <span class="tag tag-cat">${escHtml(item.category)}</span>
+          <span class="tag tag-cond">${escHtml(item.condition)}</span>
+          ${statusTag}
+        </div>
+        <div class="item-footer">
+          <div>
+            <div class="item-price">${item.price?'$'+parseFloat(item.price).toFixed(0):'—'}</div>
+            ${item.cost&&item.price?`<span class="item-profit ${pCls}">${pTxt}</span>`:''}
+          </div>
+          <div class="item-btns">${actionBtns}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function markStatus(id, status) {
+  const item = inventory.find(i=>i.id===id);
+  if (item) { item.status=status; save(); updateStats(); renderInventory(); toast(status==='sold'?'Marked as sold!':'Listed!'); }
+}
+
+// ── Edit Sheet ──
+function openEdit(id) {
+  editingId = id;
+  const item = inventory.find(i=>i.id===id);
+  if (!item) return;
+  document.getElementById('edit-fields').innerHTML = `
+    <div class="field"><label>Item Name</label><input id="e-name" type="text" value="${escAttr(item.name)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Cost Paid ($)</label><input id="e-cost" type="number" value="${item.cost||''}" inputmode="decimal"></div>
+      <div class="field"><label>List Price ($)</label><input id="e-price" type="number" value="${item.price||''}" inputmode="decimal"></div>
+    </div>
+    <div class="field"><label>Platform</label><select id="e-platform">
+      ${['eBay','Depop','Poshmark','Mercari','Facebook Marketplace','Vinted','ThredUp','In Person'].map(p=>`<option${p===item.platform?' selected':''}>${p}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Status</label><select id="e-status">
+      ${['unlisted','listed','sold'].map(s=>`<option value="${s}"${s===item.status?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Notes</label><textarea id="e-notes">${escHtml(item.notes||'')}</textarea></div>
+  `;
+  document.getElementById('edit-sheet').classList.add('open');
+}
+
+function saveEdit() {
+  const item = inventory.find(i=>i.id===editingId);
+  if (!item) return;
+  item.name = document.getElementById('e-name').value;
+  item.cost = document.getElementById('e-cost').value;
+  item.price = document.getElementById('e-price').value;
+  item.platform = document.getElementById('e-platform').value;
+  item.status = document.getElementById('e-status').value;
+  item.notes = document.getElementById('e-notes').value;
+  save(); updateStats(); renderInventory(); closeSheet(); toast('Saved!');
+}
+
+function deleteItem() {
+  if (!confirm('Delete this item?')) return;
+  inventory = inventory.filter(i=>i.id!==editingId);
+  save(); updateStats(); renderInventory(); closeSheet(); toast('Deleted');
+}
+
+function closeSheet() { document.getElementById('edit-sheet').classList.remove('open'); editingId=null; }
+
+// ── Utils ──
+function show(id, v) { document.getElementById(id).style.display = v?'block':'none'; }
+function setVal(id, v) { const el=document.getElementById(id); if(el) el.value=v; }
+function setSelect(id, v) { const el=document.getElementById(id); if(!el||!v) return; [...el.options].forEach(o=>{ if(o.value===v) el.value=v; }); }
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return escHtml(s||''); }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2000);
+}
+
+// ── Service Worker (inline) ──
+const swCode = `
+const CACHE = 'thrifttrack-v1';
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+self.addEventListener('fetch', e => {
+  if (e.request.url.includes('api.anthropic.com')) return;
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('Offline')))
+  );
+});
+`;
+
+if ('serviceWorker' in navigator) {
+  const blob = new Blob([swCode], {type:'text/javascript'});
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+
+init();
+</script>
+</body>
+</html>
